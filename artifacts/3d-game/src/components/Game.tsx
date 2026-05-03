@@ -14,6 +14,7 @@ import { useMultiplayer } from '../hooks/useMultiplayer'
 import type { AIState } from '../types'
 import * as THREE from 'three'
 import { AI_CONFIGS, AI_NAMES, TOTAL_SLOTS, GRID_START_T, normalizeProgress } from '../constants'
+import ResultScreen from './ResultScreen'
 
 enum Controls {
   forward = 'forward',
