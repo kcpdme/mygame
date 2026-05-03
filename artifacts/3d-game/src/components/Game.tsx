@@ -230,7 +230,6 @@ export default function Game({ playerName, onLeave }: GameProps) {
     }
   }, [lobbyState, countdown])
 
-  }, [lobbyState, myName, playerName, myColor, activeAICount, hud.health, isFinished])
 
   const getPosition = () => {
     const idx = leaderboard.findIndex(e => e.id === 'local')
