@@ -179,7 +179,7 @@ export default function Game({ playerName, onLeave }: GameProps) {
       <KeyboardControls map={keyMap}>
         <Canvas
           camera={{ position: [0, 8, 20], fov: 72, near: 0.1, far: 800 }}
-          shadows
+          shadows={{ type: THREE.PCFShadowMap }}
           style={{ width: '100%', height: '100%' }}
         >
           <Environment />
