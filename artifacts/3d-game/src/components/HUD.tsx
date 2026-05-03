@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react'
 
+interface LeaderboardEntry {
+  id: string
+  name: string
+  color: string
+  progress: number
+  finished: boolean
+  health: number
+}
+
 interface HUDProps {
   speed:       number
   nitro:       number
@@ -13,6 +22,7 @@ interface HUDProps {
   onlineCount: number
   myName:      string
   onLeave:     () => void
+  leaderboard: LeaderboardEntry[]
 }
 
 function formatTime(seconds: number): string {
@@ -23,7 +33,7 @@ function formatTime(seconds: number): string {
 
 const POS_SUFFIX = ['', 'ST', 'ND', 'RD', 'TH']
 
-export function HUD({ speed, nitro, health, lap, lapTimes, lapStart, position, totalRacers, boosting, onlineCount, myName, onLeave }: HUDProps) {
+export function HUD({ speed, nitro, health, lap, lapTimes, lapStart, position, totalRacers, boosting, onlineCount, myName, onLeave, leaderboard }: HUDProps) {
   const [elapsed, setElapsed] = useState(0)
   const kmh     = Math.round(Math.abs(speed) * 5.8)
   const bestLap = lapTimes.length > 0 ? Math.min(...lapTimes) : null
@@ -38,10 +48,32 @@ export function HUD({ speed, nitro, health, lap, lapTimes, lapStart, position, t
   return (
     <div className="fixed inset-0 pointer-events-none select-none z-10" style={{ fontFamily: 'Georgia, serif' }}>
 
-      {/* === TOP BAR === */}
-      <div className="absolute top-0 left-0 right-0 flex justify-between items-start p-4 gap-4">
+      {/* === LEADERBOARD - TOP LEFT === */}
+      <div className="absolute top-4 left-4 flex flex-col gap-1 w-48">
+        <div style={{ background: 'rgba(20,10,0,0.85)', border: '1px solid #8a6030', borderRadius: '4px 4px 0 0', padding: '4px 10px', color: '#a08050', fontSize: '0.6rem', fontWeight: 'bold', letterSpacing: '0.2em' }}>
+          LEADERBOARD (TOP 10)
+        </div>
+        <div style={{ background: 'rgba(10,5,0,0.7)', border: '1px solid #5a4020', borderTop: 'none', borderRadius: '0 0 4px 4px', padding: '4px 0' }}>
+          {leaderboard.map((entry, i) => (
+            <div key={entry.id} className="flex items-center px-3 py-1 gap-3" style={{ background: entry.id === 'local' ? 'rgba(255,255,255,0.1)' : 'transparent' }}>
+              <span style={{ color: i === 0 ? '#f1c40f' : '#a08050', fontSize: '0.75rem', fontWeight: 'bold', width: 14 }}>{i + 1}</span>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, boxShadow: `0 0 4px ${entry.color}` }} />
+              <span style={{ color: entry.id === 'local' ? '#fff' : '#d4b896', fontSize: '0.75rem', fontWeight: entry.id === 'local' ? 'bold' : 'normal', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {entry.name.toUpperCase()}
+              </span>
+              {entry.finished ? (
+                <span style={{ color: '#44ff88', fontSize: '0.6rem', fontWeight: 'bold' }}>FIN</span>
+              ) : entry.health <= 0 ? (
+                <span style={{ color: '#ff4444', fontSize: '0.6rem', fontWeight: 'bold' }}>OUT</span>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </div>
 
-        {/* Lap times - left */}
+      {/* === TOP BAR === */}
+      <div className="absolute top-0 right-0 flex items-start p-4 gap-4">
+        {/* Lap times */}
         <div style={{ background: 'rgba(20,10,0,0.72)', border: '1px solid #8a6030', borderRadius: 8, padding: '10px 14px', minWidth: 130 }}>
           <div style={{ color: '#a08050', fontSize: '0.65rem', letterSpacing: '0.15em', marginBottom: 4 }}>LAP TIMES</div>
           {lapTimes.slice(-5).map((t, i) => (
@@ -52,15 +84,34 @@ export function HUD({ speed, nitro, health, lap, lapTimes, lapStart, position, t
           {lapTimes.length === 0 && <div style={{ color: '#5a4020', fontSize: '0.75rem' }}>—</div>}
         </div>
 
-        {/* Center */}
-        <div className="text-center flex-1">
+        {/* Timer + Leave */}
+        <div style={{ background: 'rgba(20,10,0,0.72)', border: '1px solid #8a6030', borderRadius: 8, padding: '10px 14px', minWidth: 130, textAlign: 'right' }}>
+          <div style={{ color: '#a08050', fontSize: '0.65rem', letterSpacing: '0.15em', marginBottom: 2 }}>CURRENT LAP</div>
+          <div style={{ color: '#fff8dc', fontSize: '1.3rem', fontFamily: 'monospace' }}>{formatTime(elapsed)}</div>
+          {bestLap !== null && (
+            <>
+              <div style={{ color: '#a08050', fontSize: '0.65rem', letterSpacing: '0.15em', marginTop: 6, marginBottom: 2 }}>BEST LAP</div>
+              <div style={{ color: '#f1c40f', fontSize: '1.1rem', fontFamily: 'monospace' }}>{formatTime(bestLap)}</div>
+            </>
+          )}
+          <button
+            onClick={onLeave}
+            className="pointer-events-auto"
+            style={{ marginTop: 8, background: 'rgba(80,20,20,0.6)', border: '1px solid #662222', borderRadius: 4, color: '#ff8888', fontSize: '0.65rem', letterSpacing: '0.1em', padding: '3px 8px', cursor: 'pointer' }}
+          >
+            LEAVE RACE
+          </button>
+        </div>
+      </div>
+
+      {/* Center Lap/Pos */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 text-center">
           <div style={{ background: 'rgba(20,10,0,0.75)', border: '2px solid #a0793a', borderRadius: 8, padding: '6px 24px', display: 'inline-block', marginBottom: 4 }}>
             <div style={{ color: '#f5deb3', fontSize: '1.4rem', fontWeight: 'bold' }}>
-              LAP {lap}
+              LAP {Math.min(5, lap)} / 5
             </div>
             <div style={{ color: '#a0793a', fontSize: '0.65rem', letterSpacing: '0.3em' }}>SAVANNA RALLY</div>
           </div>
-          {/* Position */}
           <div style={{ marginBottom: 4 }}>
             <span style={{
               background: position === 1 ? '#b8860b' : 'rgba(20,10,0,0.7)',
@@ -72,36 +123,6 @@ export function HUD({ speed, nitro, health, lap, lapTimes, lapStart, position, t
               {posLabel} / {totalRacers}
             </span>
           </div>
-          {/* Online indicator */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(0,60,20,0.7)', border: '1px solid #22aa55', borderRadius: 20, padding: '2px 10px' }}>
-            <div style={{ width: 7, height: 7, borderRadius: '50%', background: onlineCount > 0 ? '#44ff88' : '#888', boxShadow: onlineCount > 0 ? '0 0 6px #44ff88' : 'none', flexShrink: 0 }} />
-            <span style={{ color: '#88ffaa', fontSize: '0.65rem', letterSpacing: '0.1em', fontWeight: 'bold' }}>
-              {onlineCount} ONLINE
-            </span>
-          </div>
-        </div>
-
-        {/* Timer + Leave - right */}
-        <div style={{ background: 'rgba(20,10,0,0.72)', border: '1px solid #8a6030', borderRadius: 8, padding: '10px 14px', minWidth: 130, textAlign: 'right' }}>
-          <div style={{ color: '#a08050', fontSize: '0.65rem', letterSpacing: '0.15em', marginBottom: 2 }}>CURRENT LAP</div>
-          <div style={{ color: '#fff8dc', fontSize: '1.3rem', fontFamily: 'monospace' }}>{formatTime(elapsed)}</div>
-          {bestLap !== null && (
-            <>
-              <div style={{ color: '#a08050', fontSize: '0.65rem', letterSpacing: '0.15em', marginTop: 6, marginBottom: 2 }}>BEST LAP</div>
-              <div style={{ color: '#f1c40f', fontSize: '1.1rem', fontFamily: 'monospace' }}>{formatTime(bestLap)}</div>
-            </>
-          )}
-          {/* Driver name */}
-          <div style={{ color: '#6a4a20', fontSize: '0.62rem', marginTop: 8, letterSpacing: '0.1em' }}>{myName}</div>
-          {/* Leave button */}
-          <button
-            onClick={onLeave}
-            className="pointer-events-auto"
-            style={{ marginTop: 8, background: 'rgba(80,20,20,0.6)', border: '1px solid #662222', borderRadius: 4, color: '#ff8888', fontSize: '0.65rem', letterSpacing: '0.1em', padding: '3px 8px', cursor: 'pointer' }}
-          >
-            LEAVE RACE
-          </button>
-        </div>
       </div>
 
       {/* === BOTTOM RIGHT — Speedometer === */}

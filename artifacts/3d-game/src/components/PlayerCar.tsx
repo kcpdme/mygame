@@ -6,6 +6,7 @@ import { getTrackCurve } from './Track'
 import type { AIState } from '../types'
 import type { RemotePlayer } from '../hooks/useMultiplayer'
 import { Html } from '@react-three/drei'
+import { VehicleVFX } from './VehicleVFX'
 
 enum Controls {
   forward = 'forward',
@@ -446,11 +447,28 @@ export function PlayerCar(props: PlayerCarProps) {
           {playerName}
         </div>
       </Html>
+      <VehicleVFX health={renderHealth} isDead={isDead} />
+
       {isDead && (
-        <mesh position={[0, 1.5, 0]}>
-          <sphereGeometry args={[0.8, 8, 8]} />
-          <meshBasicMaterial color="#ff4400" transparent opacity={0.6} />
-        </mesh>
+        <group>
+          <mesh position={[0, 0.5, 0]}>
+            <sphereGeometry args={[1.5, 16, 16]} />
+            <meshBasicMaterial color="#ff2200" transparent opacity={0.4} />
+          </mesh>
+          <Html position={[0, 4, 0]} center>
+            <div style={{
+              color: '#ff0000',
+              fontFamily: 'Impact, sans-serif',
+              fontSize: '48px',
+              fontWeight: 'black',
+              textShadow: '0 0 20px #000, 0 0 40px #ff0000',
+              letterSpacing: '4px',
+              animation: 'hudPulse 0.5s infinite alternate'
+            }}>
+              WASTED
+            </div>
+          </Html>
+        </group>
       )}
     </group>
   )

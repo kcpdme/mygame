@@ -1,9 +1,9 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { getTrackCurve } from './Track'
 import type { AIState } from '../types'
+import { VehicleVFX } from './VehicleVFX'
 
 interface AICarProps {
   startT:           number
@@ -81,10 +81,13 @@ export function AICar({
     aiState.velocity.set(0, 0, 0)
 
     // ── Only advance physics after GO! ────────────────────────────────────
-    if (!racing) return
+    if (!racing || lapsRef.current >= 5) return
 
     tRef.current += (speed / trackLen.current) * delta
-    if (tRef.current >= 1) { tRef.current -= 1; lapsRef.current++ }
+    if (tRef.current >= 1) { 
+      tRef.current -= 1; 
+      lapsRef.current = Math.min(5, lapsRef.current + 1)
+    }
 
     // AI-to-AI collision
     allAiStates.current.forEach((otherState, idx) => {
@@ -155,6 +158,7 @@ export function AICar({
           </mesh>
         </group>
       ))}
+      <VehicleVFX health={3} isDead={lapsRef.current >= 5} />
       <Html position={[0, 2.45, 0]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
         <div style={{
           background: 'rgba(0,0,0,0.78)',

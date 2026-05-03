@@ -58,6 +58,15 @@ const nitroPositions  = allPowerupPositions.filter((_, i) => powerupTypes[i] ===
 const healthPositions = allPowerupPositions.filter((_, i) => powerupTypes[i] === 'health')
 
 interface Boom { id: number; pos: [number, number, number] }
+interface LeaderboardEntry {
+  id: string
+  name: string
+  color: string
+  progress: number
+  finished: boolean
+  finishTime?: number
+  health: number
+}
 
 interface GameProps {
   playerName: string
@@ -81,6 +90,9 @@ export default function Game({ playerName, onLeave }: GameProps) {
 
   const [powerupActive, setPowerupActive] = useState<boolean[]>(new Array(allPowerupPositions.length).fill(true))
   const [obstacleActive, setObstacleActive] = useState<boolean[]>(new Array(obstaclePositions.length).fill(true))
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [isFinished, setIsFinished] = useState(false)
+  const [raceResults, setRaceResults] = useState<LeaderboardEntry[]>([])
 
   const lapStartRef = useRef(Date.now())
   const nextBoomId  = useRef(0)
@@ -108,7 +120,10 @@ export default function Game({ playerName, onLeave }: GameProps) {
 
   const handleSpeedChange = useCallback((speed: number, nitro: number, health: number) => {
     setHud({ speed, nitro, health, boosting: nitro > 0 && speed > 30 })
-  }, [])
+    if (health <= 0 && !isFinished) {
+      // Handle player death logic if needed
+    }
+  }, [isFinished])
 
   const handleSpeedBoost = useCallback(() => {
     setBoostFlash(true)
@@ -157,18 +172,70 @@ export default function Game({ playerName, onLeave }: GameProps) {
   const removeBoom = useCallback((id: number) => {
     setBooms(prev => prev.filter(b => b.id !== id))
   }, [])
+  
+  const raceStartRef = useRef(Date.now())
+  useEffect(() => {
+    if (lobbyState === 'racing' && countdown === 0) {
+      raceStartRef.current = Date.now()
+    }
+  }, [lobbyState, countdown])
+
+  // Periodic Leaderboard Update
+  useEffect(() => {
+    if (lobbyState !== 'racing') return
+    const id = setInterval(() => {
+      const entries: LeaderboardEntry[] = []
+      
+      // Local Player
+      entries.push({
+        id: 'local',
+        name: myName || playerName,
+        color: myColor,
+        progress: normalizeProgress(playerProgress.current.t, playerProgress.current.laps),
+        finished: playerProgress.current.laps >= 5,
+        health: hud.health
+      })
+
+      // AI Players
+      AI_CONFIGS.slice(0, activeAICount).forEach((cfg, i) => {
+        entries.push({
+          id: `ai-${cfg.id}`,
+          name: AI_NAMES[cfg.id] || `AI ${cfg.id}`,
+          color: cfg.bodyColor,
+          progress: normalizeProgress(aiProgress.current[i].t, aiProgress.current[i].laps),
+          finished: aiProgress.current[i].laps >= 5,
+          health: 3
+        })
+      })
+
+      // Remote Players
+      remotePlayers.forEach(rp => {
+        entries.push({
+          id: rp.id,
+          name: rp.name,
+          color: rp.color,
+          progress: rp.laps + (rp.x === 0 && rp.z === 0 ? 0 : 0.5), // Rough progress for remotes
+          finished: rp.laps >= 5,
+          health: rp.health
+        })
+      })
+
+      entries.sort((a, b) => b.progress - a.progress)
+      setLeaderboard(entries.slice(0, 10))
+
+      // Check if all finished
+      const allFinished = entries.every(e => e.finished || e.health <= 0)
+      if (allFinished && entries.length > 0 && !isFinished) {
+        setRaceResults(entries)
+        setIsFinished(true)
+      }
+    }, 200)
+    return () => clearInterval(id)
+  }, [lobbyState, myName, playerName, myColor, activeAICount, remotePlayers, hud.health, isFinished])
 
   const getPosition = () => {
-    const playerDist = normalizeProgress(playerProgress.current.t, playerProgress.current.laps)
-    let pos = 1
-    for (let i = 0; i < activeAICount; i++) {
-      const ai = aiProgress.current[i]
-      if (normalizeProgress(ai.t, ai.laps) > playerDist) pos++
-    }
-    remotePlayers.forEach(rp => {
-      if (rp.laps > playerProgress.current.laps) pos++
-    })
-    return pos
+    const idx = leaderboard.findIndex(e => e.id === 'local')
+    return idx === -1 ? 1 : idx + 1
   }
 
   const racing      = countdown === null && !!currentRoom
@@ -261,12 +328,17 @@ export default function Game({ playerName, onLeave }: GameProps) {
           lapTimes={lapTimes}
           lapStart={lapStartRef.current}
           position={getPosition()}
-          totalRacers={TOTAL_SLOTS}
+          totalRacers={leaderboard.length}
           boosting={hud.boosting}
           onlineCount={onlineCount}
           myName={myName || playerName}
           onLeave={() => { leaveRoom(); setCountdown(3); }}
+          leaderboard={leaderboard}
         />
+      )}
+
+      {isFinished && (
+        <ResultScreen results={raceResults} onRestart={() => { setIsFinished(false); leaveRoom(); }} />
       )}
 
       {/* Room Selection UI */}
