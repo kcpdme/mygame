@@ -20,6 +20,23 @@ export const MAX_LAPS = 5
 export const GRID_START_T = 0.970
 
 export function normalizeProgress(t: number, laps: number): number {
-  const nt = ((t - GRID_START_T) % 1 + 1) % 1
-  return laps + nt
+  return laps + t
+}
+
+/** Search ±0.10 around lastT for the closest curve point. */
+export function nearestT(
+  pos: THREE.Vector3,
+  curve: THREE.CatmullRomCurve3,
+  lastT: number,
+): number {
+  const RANGE = 0.10
+  const STEPS = 36
+  let best = lastT, minD = Infinity
+  for (let i = 0; i <= STEPS; i++) {
+    const t = ((lastT - RANGE / 2 + (i / STEPS) * RANGE) % 1 + 1) % 1
+    const p = curve.getPoint(t)
+    const d = (pos.x - p.x) ** 2 + (pos.z - p.z) ** 2
+    if (d < minD) { minD = d; best = t }
+  }
+  return best
 }

@@ -13,8 +13,9 @@ import { getObstaclePositions, getPowerupPositions, getPowerupTypes } from './Tr
 import { useMultiplayer } from '../hooks/useMultiplayer'
 import type { AIState } from '../types'
 import * as THREE from 'three'
-import { AI_CONFIGS, AI_NAMES, TOTAL_SLOTS, GRID_START_T, normalizeProgress } from '../constants'
+import { AI_CONFIGS, AI_NAMES, TOTAL_SLOTS, GRID_START_T, normalizeProgress, nearestT } from '../constants'
 import ResultScreen from './ResultScreen'
+import { useFrame } from '@react-three/fiber'
 
 enum Controls {
   forward = 'forward',
@@ -152,21 +153,21 @@ export default function Game({ playerName, onLeave }: GameProps) {
     aiProgress.current[carIdx] = { t, laps }
   }, [])
 
-  const removeBoom = useCallback((id: number) => {
-    setBooms(prev => prev.filter(b => b.id !== id))
-  }, [])
-  
-  const raceStartRef = useRef(Date.now())
-  useEffect(() => {
-    if (lobbyState === 'racing' && countdown === 0) {
-      raceStartRef.current = Date.now()
-    }
-  }, [lobbyState, countdown])
+  // Keep a ref to remote players for the leaderboard logic
+  const remotePlayersRef = useRef(remotePlayers)
+  useEffect(() => { remotePlayersRef.current = remotePlayers }, [remotePlayers])
 
-  // Periodic Leaderboard Update
-  useEffect(() => {
-    if (lobbyState !== 'racing') return
-    const id = setInterval(() => {
+  const LeaderboardManager = () => {
+    const lastUpdate = useRef(0)
+    const curve = useRef(getTrackCurve())
+
+    useFrame((state) => {
+      const now = state.clock.getElapsedTime()
+      if (now - lastUpdate.current < 0.2) return
+      lastUpdate.current = now
+
+      if (lobbyState !== 'racing') return
+
       const entries: LeaderboardEntry[] = []
       
       // Local Player
@@ -192,12 +193,14 @@ export default function Game({ playerName, onLeave }: GameProps) {
       })
 
       // Remote Players
-      remotePlayers.forEach(rp => {
+      remotePlayersRef.current.forEach(rp => {
+        // Calculate dynamic progress for remotes based on their position
+        const rpT = nearestT(new THREE.Vector3(rp.x, 0, rp.z), curve.current, 0)
         entries.push({
           id: rp.id,
           name: rp.name,
           color: rp.color,
-          progress: rp.laps + (rp.x === 0 && rp.z === 0 ? 0 : 0.5), // Rough progress for remotes
+          progress: normalizeProgress(rpT, rp.laps),
           finished: rp.laps >= 5,
           health: rp.health
         })
@@ -212,9 +215,22 @@ export default function Game({ playerName, onLeave }: GameProps) {
         setRaceResults(entries)
         setIsFinished(true)
       }
-    }, 200)
-    return () => clearInterval(id)
-  }, [lobbyState, myName, playerName, myColor, activeAICount, remotePlayers, hud.health, isFinished])
+    })
+    return null
+  }
+
+  const removeBoom = useCallback((id: number) => {
+    setBooms(prev => prev.filter(b => b.id !== id))
+  }, [])
+  
+  const raceStartRef = useRef(Date.now())
+  useEffect(() => {
+    if (lobbyState === 'racing' && countdown === 0) {
+      raceStartRef.current = Date.now()
+    }
+  }, [lobbyState, countdown])
+
+  }, [lobbyState, myName, playerName, myColor, activeAICount, hud.health, isFinished])
 
   const getPosition = () => {
     const idx = leaderboard.findIndex(e => e.id === 'local')

@@ -4,6 +4,7 @@ import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { getTrackCurve } from './Track'
 import type { AIState } from '../types'
+import { nearestT } from '../constants'
 import type { RemotePlayer } from '../hooks/useMultiplayer'
 import { Html } from '@react-three/drei'
 import { VehicleVFX } from './VehicleVFX'
@@ -81,11 +82,20 @@ export function PlayerCar(props: PlayerCarProps) {
     INIT_ANGLE.current = Math.atan2(tan.x, tan.z)
   }
 
+  const startPos = useRef(new THREE.Vector3())
+  if (startPos.current.x === 0) {
+    const p = curve.current.getPoint(PLAYER_GRID_T)
+    const tan = curve.current.getTangent(PLAYER_GRID_T)
+    const right = new THREE.Vector3(tan.z, 0, -tan.x).normalize()
+    p.addScaledVector(right, PLAYER_GRID_LAT)
+    startPos.current.copy(p)
+  }
+
   // ── Physics state refs (no re-renders from the game loop) ─────────────────
   const angle       = useRef(INIT_ANGLE.current)
   const speed       = useRef(0)           // longitudinal speed
   const lateralVel  = useRef(0)           // local-frame lateral velocity (right = +)
-  const pos         = useRef(new THREE.Vector3(0, 0.55, 0))
+  const pos         = useRef(new THREE.Vector3(startPos.current.x, 0.55, startPos.current.z))
   const nitro       = useRef(0)
   const nitroOn     = useRef(false)
   const health      = useRef(3)
@@ -476,22 +486,4 @@ export function PlayerCar(props: PlayerCarProps) {
 
 function clamp(v: number, min: number, max: number) {
   return v < min ? min : v > max ? max : v
-}
-
-/** Search ±0.10 around lastT for the closest curve point. */
-function nearestT(
-  pos: THREE.Vector3,
-  curve: THREE.CatmullRomCurve3,
-  lastT: number,
-): number {
-  const RANGE = 0.10
-  const STEPS = 36
-  let best = lastT, minD = Infinity
-  for (let i = 0; i <= STEPS; i++) {
-    const t = ((lastT - RANGE / 2 + (i / STEPS) * RANGE) % 1 + 1) % 1
-    const p = curve.getPoint(t)
-    const d = (pos.x - p.x) ** 2 + (pos.z - p.z) ** 2
-    if (d < minD) { minD = d; best = t }
-  }
-  return best
 }
