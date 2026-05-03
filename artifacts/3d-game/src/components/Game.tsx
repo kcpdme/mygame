@@ -157,17 +157,12 @@ export default function Game({ playerName, onLeave }: GameProps) {
   const remotePlayersRef = useRef(remotePlayers)
   useEffect(() => { remotePlayersRef.current = remotePlayers }, [remotePlayers])
 
-  const LeaderboardManager = () => {
-    const lastUpdate = useRef(0)
-    const curve = useRef(getTrackCurve())
+  // Periodic Leaderboard Update using a stable interval
+  useEffect(() => {
+    if (lobbyState !== 'racing') return
+    const curve = getTrackCurve()
 
-    useFrame((state) => {
-      const now = state.clock.getElapsedTime()
-      if (now - lastUpdate.current < 0.2) return
-      lastUpdate.current = now
-
-      if (lobbyState !== 'racing') return
-
+    const intervalId = setInterval(() => {
       const entries: LeaderboardEntry[] = []
       
       // Local Player
@@ -194,8 +189,7 @@ export default function Game({ playerName, onLeave }: GameProps) {
 
       // Remote Players
       remotePlayersRef.current.forEach(rp => {
-        // Calculate dynamic progress for remotes based on their position
-        const rpT = nearestT(new THREE.Vector3(rp.x, 0, rp.z), curve.current, 0)
+        const rpT = nearestT(new THREE.Vector3(rp.x, 0, rp.z), curve, 0)
         entries.push({
           id: rp.id,
           name: rp.name,
@@ -215,9 +209,10 @@ export default function Game({ playerName, onLeave }: GameProps) {
         setRaceResults(entries)
         setIsFinished(true)
       }
-    })
-    return null
-  }
+    }, 200)
+
+    return () => clearInterval(intervalId)
+  }, [lobbyState, activeAICount, isFinished]) // Reduced dependencies to keep interval stable
 
   const removeBoom = useCallback((id: number) => {
     setBooms(prev => prev.filter(b => b.id !== id))
