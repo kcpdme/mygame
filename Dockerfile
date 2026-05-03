@@ -4,14 +4,28 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 WORKDIR /app
-COPY . .
 
 # Build Stage
 FROM base AS build
-# Remove restrictive package overrides that might break Docker builds on different architectures
+# Copy configuration and ALL workspace package.json files to leverage caching
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
+# Explicitly copy all package.json files for artifacts and libs
+COPY artifacts/3d-game/package.json ./artifacts/3d-game/
+COPY artifacts/mockup-sandbox/package.json ./artifacts/mockup-sandbox/
+COPY artifacts/api-server/package.json ./artifacts/api-server/
+COPY lib/api-zod/package.json ./lib/api-zod/
+COPY lib/api-client-react/package.json ./lib/api-client-react/
+COPY lib/api-spec/package.json ./lib/api-spec/
+COPY lib/db/package.json ./lib/db/
+
+# Remove restrictive package overrides
 RUN sed -i '/overrides:/,$d' pnpm-workspace.yaml || true
-# Install dependencies
+
+# Install dependencies (cached if locks/packages haven't changed)
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+
+# Now copy the rest of the source code
+COPY . .
 
 # Build variables for Vite
 ENV PORT=8080
