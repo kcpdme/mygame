@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { getTrackCurve } from './Track'
 import type { AIState } from '../types'
 import { VehicleVFX } from './VehicleVFX'
+import { AI_NAMES } from '../constants'
 
 interface AICarProps {
   startT:           number
@@ -30,7 +31,6 @@ const PUSH_OUT = 9
 // Row 4: AI5 left(-3), AI6 right(+3)
 // Row 5: AI7 left(-3), AI8 right(+3)
 const LAT_OFFSETS = [3.0, -3.0, 3.0, -3.0, 3.0, -3.0, 3.0, -3.0, 3.0]
-const AI_NAMES = ['DustRunner', 'SavannaFox', 'IronJackal', 'CanyonViper', 'WildKudu', 'DuneRhino', 'BlazeHawk', 'MossCobra', 'SandFalcon']
 
 export function AICar({
   startT, speed, color, bodyColor, carId, aiState,

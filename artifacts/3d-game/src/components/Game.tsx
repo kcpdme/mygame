@@ -13,6 +13,7 @@ import { getObstaclePositions, getPowerupPositions, getPowerupTypes } from './Tr
 import { useMultiplayer } from '../hooks/useMultiplayer'
 import type { AIState } from '../types'
 import * as THREE from 'three'
+import { AI_CONFIGS, AI_NAMES, TOTAL_SLOTS, GRID_START_T, normalizeProgress } from '../constants'
 
 enum Controls {
   forward = 'forward',
@@ -30,26 +31,7 @@ const keyMap = [
   { name: Controls.nitro,   keys: ['Space'] },
 ]
 
-const GRID_START_T = 0.970
-
-function normalizeProgress(t: number, laps: number): number {
-  const nt = ((t - GRID_START_T) % 1 + 1) % 1
-  return laps + nt
-}
-
-const AI_CONFIGS = [
-  { id: 0, startT: 0.970, speed: 41, bodyColor: '#ddaa00', color: '#886600' },
-  { id: 1, startT: 0.943, speed: 34, bodyColor: '#228844', color: '#114422' },
-  { id: 2, startT: 0.943, speed: 38, bodyColor: '#2244cc', color: '#112288' },
-  { id: 3, startT: 0.916, speed: 28, bodyColor: '#cc5500', color: '#882200' },
-  { id: 4, startT: 0.916, speed: 44, bodyColor: '#9922cc', color: '#551188' },
-  { id: 5, startT: 0.889, speed: 31, bodyColor: '#22aacc', color: '#116688' },
-  { id: 6, startT: 0.889, speed: 36, bodyColor: '#cc2266', color: '#881144' },
-  { id: 7, startT: 0.862, speed: 26, bodyColor: '#aacc22', color: '#668811' },
-  { id: 8, startT: 0.862, speed: 39, bodyColor: '#cc8822', color: '#884411' },
-]
-
-const TOTAL_SLOTS = 10
+const AI_NAMES_LOCAL = AI_NAMES // Backwards compat if needed inside the component
 
 const obstaclePositions  = getObstaclePositions()
 const allPowerupPositions = getPowerupPositions()
