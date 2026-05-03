@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
+import { VehicleVFX } from './VehicleVFX'
 import type { RemotePlayer } from '../hooks/useMultiplayer'
 
 const CAR_Y      = 0.42
@@ -86,12 +87,7 @@ export function RemoteCar({ player }: { player: RemotePlayer }) {
           {player.name}
         </div>
       </Html>
-      {isDead && (
-        <mesh position={[0, 1.5, 0]}>
-          <sphereGeometry args={[0.8, 8, 8]} />
-          <meshBasicMaterial color="#ff4400" transparent opacity={0.6} />
-        </mesh>
-      )}
+      <VehicleVFX health={player.health} isDead={isDead} />
     </group>
   )
 }
